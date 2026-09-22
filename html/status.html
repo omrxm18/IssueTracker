@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Issues — Core Dump</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .status-open {
+            background: #fde8e8;
+            color: #a11;
+        }
+
+        .status-triaged {
+            background: #fef3c7;
+            color: #92600a;
+        }
+
+        .status-in_progress {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-closed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        select {
+            padding: 4px;
+        }
+
+        a.report-link {
+            display: inline-block;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Issues — Core Dump</h1>
+    <select id="repoFilter">
+        <option value="">All repos</option>
+    </select>
+    <table id="issuesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Repo</th>
+                <th>Title</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Opened</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <a class="report-link" href="/report.html">Report a new issue →</a>
+
+    <script>
+        function esc(str) {
+            if (str == null) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        const REPOS = ['Perch', 'manview', 'DroidSpaces', 'KernelSU-Next', 'Whatsapp-bot'];
+        const repoFilter = document.getElementById('repoFilter');
+        REPOS.forEach(r => repoFilter.add(new Option(r, r)));
+
+        const params = new URLSearchParams(location.search);
+        if (params.get('repo')) repoFilter.value = params.get('repo');
+
+        async function load() {
+            const repo = repoFilter.value;
+            const qs = repo ? '?repo=' + encodeURIComponent(repo) : '';
+            const res = await fetch('/api/issues/public' + qs);
+            const rows = await res.json();
+            document.querySelector('#issuesTable tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td>#${r.id}</td>
+      <td>${esc(r.repo)}</td>
+      <td>${esc(r.title)}</td>
+      <td>${esc(r.severity)}</td>
+      <td><span class="badge status-${r.status}">${esc(r.status)}</span></td>
+      <td>${r.created_at}</td>
+      <td><a href="/issue.html?id=${r.id}">${esc(r.title)}</a></td>
+    </tr>`).join('');
+        }
+
+        repoFilter.addEventListener('change', load);
+        load();
+    </script>
+</body>
+
+</html>

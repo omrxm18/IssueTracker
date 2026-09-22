@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Issues — Internal</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        select {
+            padding: 4px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Internal Issue Queue</h1>
+    <div class="filters">
+        <select id="repoFilter">
+            <option value="">All repos</option>
+        </select>
+        <select id="statusFilter">
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="triaged">Triaged</option>
+            <option value="in_progress">In progress</option>
+            <option value="closed">Closed</option>
+        </select>
+    </div>
+    <table id="issuesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Repo</th>
+                <th>Title</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Reporter</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        function esc(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        const REPOS = ['Perch', 'manview', 'DroidSpaces', 'KernelSU-Next', 'Whatsapp-bot'];
+        const repoFilter = document.getElementById('repoFilter');
+        REPOS.forEach(r => repoFilter.add(new Option(r, r)));
+
+        let token = sessionStorage.getItem('internal_token');
+        if (!token) {
+            token = prompt('access token:');
+            if (token) sessionStorage.setItem('internal_token', token);
+        }
+
+        async function load() {
+            const repo = repoFilter.value;
+            const status = document.getElementById('statusFilter').value;
+            const qs = new URLSearchParams({ ...(repo && { repo }), ...(status && { status }) });
+
+            const res = await fetch('/api/issues?' + qs, {
+                headers: { Authorization: 'Bearer ' + token }
+            });
+            if (res.status === 401) {
+                sessionStorage.removeItem('internal_token');
+                alert('Invalid token');
+                return;
+            }
+            const rows = await res.json();
+            const tbody = document.querySelector('#issuesTable tbody');
+            tbody.innerHTML = rows.map(r => `
+              <tr>
+                <td>${r.id}</td><td>${esc(r.repo)}</td><td>${esc(r.title)}</td>
+                <td>${esc(r.severity)}</td>
+                <td>
+                  <select onchange="updateVisibility(${r.id}, this.value)">
+                    <option value="internal" ${r.visibility === 'internal' ? 'selected' : ''}>Private</option>
+                    <option value="public" ${r.visibility === 'public' ? 'selected' : ''}>Public</option>
+                  </select>
+                </td>
+                <td>${esc(r.reporter_name) || '—'} ${r.reporter_contact ? '(' + esc(r.reporter_contact) + ')' : ''}</td>
+                <td>${r.created_at}</td>
+            </tr>`).join('');
+        }
+
+        async function updateVisibility(id, visibility) {
+            await fetch('/api/issues/' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ visibility })
+            });
+        }
+
+        repoFilter.addEventListener('change', load);
+        document.getElementById('statusFilter').addEventListener('change', load);
+        load();
+    </script>
+</body>
+
+</html>

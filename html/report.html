@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Report an Issue — Core Dump</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        button {
+            margin-top: 16px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #honeypot {
+            position: absolute;
+            left: -9999px;
+        }
+
+        #status {
+            margin-top: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Report an Issue</h1>
+    <form id="issueForm">
+        <label for="repo">Repository</label>
+        <select id="repo" name="repo" required>
+            <option value="">-- select --</option>
+            <option value="perch">Perch</option>
+            <option value="qubystock">QubyStock</option>
+            <option value="manview">manview</option>
+            <option value="droidspaces">DroidSpaces</option>
+            <option value="kernelsu-next">KernelSU-Next</option>
+            <option value="whatsapp-bot">whatsapp_bot</option>
+            <option value="site">Site / other</option>
+        </select>
+
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required>
+
+        <label for="body">Description</label>
+        <textarea id="body" name="body" required></textarea>
+
+        <label for="severity">Severity</label>
+        <select id="severity" name="severity">
+            <option value="low">Low</option>
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+        </select>
+
+        <label for="reporter_name">Your name (optional)</label>
+        <input type="text" id="reporter_name" name="reporter_name">
+
+        <label for="reporter_contact">Contact / email (optional)</label>
+        <input type="text" id="reporter_contact" name="reporter_contact">
+
+        <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+            <input type="checkbox" id="sensitive" name="sensitive" style="width:auto;">
+            This is a security-sensitive issue — keep it private until reviewed
+        </label>
+
+        <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+
+        <button type="submit">Submit Report</button>
+    </form>
+    <br>
+    Tracking an issue instead? go to <a href="/status.html">Status</a>
+    <div id="status"></div>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const preRepo = params.get('repo');
+        if (preRepo) document.getElementById('repo').value = preRepo;
+
+        document.getElementById('issueForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const data = Object.fromEntries(new FormData(form).entries());
+            data.visibility = form.sensitive.checked ? 'internal' : 'public';
+            const statusEl = document.getElementById('status');
+
+            try {
+                const res = await fetch('/api/issues', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const { id } = await res.json();
+                    statusEl.textContent = `Thanks — issue #${id} submitted.`;
+                    form.reset();
+                } else {
+                    const err = await res.json();
+                    statusEl.textContent = `Error: ${err.error || 'submission failed'}`;
+                }
+            } catch {
+                statusEl.textContent = 'Network error — try again.';
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "issues-app",
+  "version": "1.0.0",
+  "description": "Standalone issue/bug report tracker for Core Dump repos",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsx watch src/index.ts",
+    "build": "tsc -p .",
+    "prod": "npm run build && node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "better-sqlite3": "^13.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "@types/node": "^26.5.0",
+    "@types/express": "^5.0.6",
+    "@types/better-sqlite3": "^9.6.0",
+    "tsx": "^4.23.13"
+  }
+}
