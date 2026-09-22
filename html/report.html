@@ -4,18 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <title>Report an Issue — Core Dump</title>
+    <link rel="stylesheet" href="style.css">
     <style>
         body {
-            font-family: system-ui, sans-serif;
-            max-width: 600px;
+            font-family: var(--font);
+            max-width: var(--max-width);
             margin: 40px auto;
             padding: 0 16px;
+            color: var(--text);
+            background-color: var(--bg);
         }
 
         label {
             display: block;
             margin-top: 12px;
             font-weight: 600;
+            color: var(--text);
         }
 
         input,
@@ -24,6 +28,7 @@
             width: 100%;
             padding: 8px;
             margin-top: 4px;
+            background-color: var(--text);
             box-sizing: border-box;
         }
 
@@ -35,6 +40,10 @@
             margin-top: 16px;
             padding: 10px 20px;
             cursor: pointer;
+        }
+
+        a { 
+            color: var(--link);
         }
 
         #honeypot {
@@ -61,7 +70,6 @@
             <option value="droidspaces">DroidSpaces</option>
             <option value="kernelsu-next">KernelSU-Next</option>
             <option value="whatsapp-bot">whatsapp_bot</option>
-            <option value="site">Site / other</option>
         </select>
 
         <label for="title">Title</label>

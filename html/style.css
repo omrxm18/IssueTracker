@@ -1,0 +1,19 @@
+:root {
+    --bg: #14161a;
+    --text: #e6e4df;
+    --accent: #d99a4e;
+    --link: #5fa8a0;
+    --border: #2a2d33;
+    --font: system-ui, sans-serif;
+    --max-width: 600px;
+}
+
+[data-theme="light"] {
+    --bg: #f2f0ea;
+    --surface: #e9e6dd;
+    --text: #1c1e22;
+    --muted: #5d6068;
+    --accent: #b5762a;
+    --link: #2f7d76;
+    --border: #d8d4c8;
+}
