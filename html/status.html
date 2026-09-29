@@ -67,6 +67,9 @@
 </head>
 
 <body>
+    <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme">
+        <span id="theme-toggle-text">dark</span>
+    </button>
     <h1>Issues — Core Dump</h1>
     <select id="repoFilter">
         <option value="">All repos</option>
@@ -119,6 +122,7 @@
         repoFilter.addEventListener('change', load);
         load();
     </script>
+    <script src="script.js"></script>
 </body>
 
 </html>

@@ -42,6 +42,9 @@
 </head>
 
 <body>
+    <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme">
+        <span id="theme-toggle-text">dark</span>
+    </button>
     <h1>Internal Issue Queue</h1>
     <div class="filters">
         <select id="repoFilter">
@@ -94,16 +97,16 @@
             const qs = new URLSearchParams({ ...(repo && { repo }), ...(status && { status }) });
 
             const res = await fetch('/api/issues?' + qs, {
-                headers: { Authorization: 'Bearer ' + token }
-            });
-            if (res.status === 401) {
-                sessionStorage.removeItem('internal_token');
-                alert('Invalid token');
-                return;
-            }
-            const rows = await res.json();
-            const tbody = document.querySelector('#issuesTable tbody');
-            tbody.innerHTML = rows.map(r => `
+            headers: { Authorization: 'Bearer ' + token }
+        });
+        if (res.status === 401) {
+            sessionStorage.removeItem('internal_token');
+            alert('Invalid token');
+            return;
+        }
+        const rows = await res.json();
+        const tbody = document.querySelector('#issuesTable tbody');
+        tbody.innerHTML = rows.map(r => `
               <tr>
                 <td>${r.id}</td><td>${esc(r.repo)}</td><td>${esc(r.title)}</td>
                 <td>${esc(r.severity)}</td>
@@ -130,6 +133,7 @@
         document.getElementById('statusFilter').addEventListener('change', load);
         load();
     </script>
+    <script src="script.js"></script>
 </body>
 
 </html>

@@ -1,8 +1,9 @@
 :root {
-    --bg: #14161a;
+    --bg: #455165;
     --text: #e6e4df;
-    --accent: #d99a4e;
-    --link: #5fa8a0;
+    --text-input: #e6e4df;
+    --accent: #bdd94e;
+    --link: #8ddad1;
     --border: #2a2d33;
     --font: system-ui, sans-serif;
     --max-width: 600px;
@@ -12,8 +13,20 @@
     --bg: #f2f0ea;
     --surface: #e9e6dd;
     --text: #1c1e22;
+    --text-input: #c5c3c8;
     --muted: #5d6068;
     --accent: #b5762a;
     --link: #2f7d76;
     --border: #d8d4c8;
+}
+
+.theme-btn {
+    font-family: var(--font-mono);
+    font-size: 1.2rem;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 3px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
 }
