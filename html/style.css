@@ -1,5 +1,5 @@
 :root {
-    --bg: #455165;
+    --bg: #624565;
     --text: #e6e4df;
     --text-input: #e6e4df;
     --accent: #bdd94e;
@@ -10,10 +10,10 @@
 }
 
 [data-theme="light"] {
-    --bg: #f2f0ea;
+    --bg: #fcf9f2;
     --surface: #e9e6dd;
     --text: #1c1e22;
-    --text-input: #c5c3c8;
+    --text-input: #d8d1d1;
     --muted: #5d6068;
     --accent: #b5762a;
     --link: #2f7d76;
@@ -21,10 +21,9 @@
 }
 
 .theme-btn {
-    font-family: var(--font-mono);
+    font-family: var(--font);
     font-size: 1.2rem;
     background: transparent;
-    color: var(--muted);
     border: none;
     border-radius: 3px;
     padding: 0.3rem 0.6rem;
