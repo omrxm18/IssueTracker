@@ -42,7 +42,7 @@ function sqliteAdapter(): DbAdapter {
       return sqlite.pragma('user_version', { simple: true }) as number;
     },
     async setVersion(v) {
-      sqlite.pragma(`user_version = ${v}`);
+      sqlite.pragma(`user_version = ${Number(v)}`);
     },
     async query<T>(sql: string, params: unknown[] = []) {
       return sqlite.prepare(sql).all(...params) as T[];
@@ -108,6 +108,11 @@ async function runMigrations() {
 
   for (const file of files) {
     const version = parseInt(file.split('_')[0], 10);
+    // A file without a numeric prefix would give NaN, and `NaN <= x` is false,
+    // so it used to be applied (and version-stamped as NaN) on every start.
+    if (!Number.isInteger(version)) {
+      throw new Error(`Migration file "${file}" must start with a number, e.g. 001_init.sql`);
+    }
     if (version <= currentVersion) continue;
     console.log(`Applying migration ${file}...`);
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');

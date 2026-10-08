@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Report an Issue — Core Dump</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -68,17 +69,10 @@
         <label for="repo">Repository</label>
         <select id="repo" name="repo" required>
             <option value="">-- select --</option>
-            <option value="perch">Perch</option>
-            <option value="qubystock">QubyStock</option>
-            <option value="manview">manview</option>
-            <option value="droidspaces">DroidSpaces</option>
-            <option value="kernelsu-next">KernelSU-Next</option>
-            <option value="whatsapp-bot">whatsapp_bot</option>
-            <option value="remote-actions">RemoteActions</option>
         </select>
 
         <label for="title">Title</label>
-        <input type="text" id="title" name="title" required>
+        <input type="text" id="title" name="title" required maxlength="200">
 
         <label for="body">Description</label>
         <textarea id="body" name="body" required></textarea>
@@ -104,41 +98,70 @@
 
         <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
 
-        <button type="submit">Submit Report</button>
+        <button type="submit" id="submitBtn">Submit Report</button>
     </form>
     <br>
     Tracking an issue instead? go to <a href="/status.html">Status</a>
-    <div id="status"></div>
+    <div id="status" role="status"></div>
 
     <script>
-        const params = new URLSearchParams(location.search);
-        const preRepo = params.get('repo');
-        if (preRepo) document.getElementById('repo').value = preRepo;
+        const statusEl = document.getElementById('status');
+        const repoEl = document.getElementById('repo');
+
+        // The repo list comes from the server so the form and the API can't drift apart.
+        (async () => {
+            try {
+                const res = await fetch('/api/repos');
+                if (!res.ok) throw new Error();
+                const repos = await res.json();
+                for (const r of repos) {
+                    const opt = document.createElement('option');
+                    opt.value = r.slug;
+                    opt.textContent = r.label;
+                    repoEl.appendChild(opt);
+                }
+                const preRepo = new URLSearchParams(location.search).get('repo');
+                if (preRepo) repoEl.value = preRepo.toLowerCase();
+            } catch {
+                statusEl.textContent = 'Could not load the repository list — reload the page.';
+            }
+        })();
 
         document.getElementById('issueForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
+            const btn = document.getElementById('submitBtn');
+
             const data = Object.fromEntries(new FormData(form).entries());
             data.visibility = form.sensitive.checked ? 'internal' : 'public';
-            const statusEl = document.getElementById('status');
+            delete data.sensitive; // checkbox state is already sent as `visibility`
 
+            btn.disabled = true;
+            statusEl.textContent = 'Submitting…';
+
+            let res;
             try {
-                const res = await fetch('/api/issues', {
+                res = await fetch('/api/issues', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                if (res.ok) {
-                    const { id } = await res.json();
-                    statusEl.textContent = `Thanks — issue #${id} submitted.`;
-                    form.reset();
-                } else {
-                    const err = await res.json();
-                    statusEl.textContent = `Error: ${err.error || 'submission failed'}`;
-                }
             } catch {
                 statusEl.textContent = 'Network error — try again.';
+                btn.disabled = false;
+                return;
             }
+
+            // The server (or a proxy in front of it) may answer with non-JSON, e.g. a 502 page.
+            const payload = await res.json().catch(() => null);
+
+            if (res.ok && payload?.id !== undefined) {
+                statusEl.textContent = `Thanks — issue #${payload.id} submitted.`;
+                form.reset();
+            } else {
+                statusEl.textContent = `Error: ${payload?.error || `submission failed (HTTP ${res.status})`}`;
+            }
+            btn.disabled = false;
         });
     </script>
     <script src="script.js"></script>
