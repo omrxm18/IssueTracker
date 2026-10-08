@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Issues — Core Dump</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -15,51 +16,113 @@
             padding: 0 16px;
         }
 
+        a {
+            color: var(--link);
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            margin-top: 16px;
+        }
+
+        .filters select {
+            padding: 6px 8px;
+            font: inherit;
+            color: var(--text);
+            background-color: color-mix(in srgb, var(--text) 8%, var(--bg));
+            border: var(--border);
+        }
+
+        #count {
+            margin-left: auto;
+            font-size: 0.9em;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 16px;
         }
 
         th,
         td {
             text-align: left;
             padding: 8px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+            vertical-align: middle;
         }
 
-        .badge {
-            padding: 2px 8px;
-            border-radius: 4px;
+        tbody tr:hover {
+            background: color-mix(in srgb, var(--text) 6%, transparent);
+        }
+
+        td.title {
+            min-width: 14em;
+            overflow-wrap: anywhere;
+        }
+
+        td.num,
+        td.date {
+            white-space: nowrap;
+        }
+
+        td.empty {
+            text-align: center;
+            padding: 24px 8px;
+        }
+
+        td.error {
+            color: #c0392b;
+            font-weight: 600;
+        }
+
+        /* Outlined pill with a colored dot: text keeps full contrast on any theme. */
+        .tag {
+            --c: var(--text);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 10px;
+            border-radius: 999px;
             font-size: 0.85em;
+            font-weight: 600;
+            text-transform: capitalize;
+            white-space: nowrap;
+            color: var(--text);
+            background: transparent;
+            border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
         }
 
-        .status-open {
-            background: #fde8e8;
-            color: #a11;
+        .tag::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--c);
         }
 
-        .status-triaged {
-            background: #fef3c7;
-            color: #92600a;
-        }
+        .tag.status-open { --c: #d9534f; }
+        .tag.status-triaged { --c: #d99a00; }
+        .tag.status-in-progress { --c: #3b82f6; }
+        .tag.status-resolved,
+        .tag.status-fixed,
+        .tag.status-closed { --c: #2e8b57; }
+        .tag.status-wontfix,
+        .tag.status-duplicate,
+        .tag.status-invalid { --c: #8a8a8a; }
 
-        .status-in_progress {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .status-closed {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        select {
-            padding: 4px;
-        }
+        .tag.sev-low { --c: #8a8a8a; }
+        .tag.sev-high { --c: #e67e22; }
+        .tag.sev-critical { --c: #d63a2a; }
 
         a.report-link {
-            color: var(--link);
             display: inline-block;
             margin-top: 16px;
         }
@@ -71,23 +134,40 @@
         <span id="theme-toggle-text">dark</span>
     </button>
     <h1>Issues — Core Dump</h1>
-    <select id="repoFilter">
-        <option value="">All repos</option>
-    </select>
-    <table id="issuesTable">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Repo</th>
-                <th>Title</th>
-                <th>Severity</th>
-                <th>Status</th>
-                <th>Opened</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <a class="report-link" href="/report.html">Report a new issue →</a>
+
+    <div class="filters">
+        <select id="repoFilter" aria-label="Filter by repository">
+            <option value="">All repos</option>
+        </select>
+        <select id="statusFilter" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="triaged">Triaged</option>
+            <option value="in_progress">In progress</option>
+            <option value="closed">Closed</option>
+        </select>
+        <span id="count" role="status" aria-live="polite"></span>
+    </div>
+
+    <div class="table-wrap">
+        <table id="issuesTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Repo</th>
+                    <th>Title</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Opened</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="6" class="empty">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <a class="report-link" id="reportLink" href="/report.html">Report a new issue →</a>
 
     <script>
         function esc(str) {
@@ -95,32 +175,109 @@
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        const REPOS = ['Perch', 'manview', 'DroidSpaces', 'KernelSU-Next', 'Whatsapp-bot', 'RemoteActions'];
+        // "in_progress" -> "in-progress", safe for use in a class name.
+        function slug(str) {
+            return String(str ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
+        function fmtDate(raw) {
+            const d = new Date(raw);
+            if (isNaN(d)) return `<span>${esc(raw)}</span>`;
+            const text = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            return `<time datetime="${esc(d.toISOString())}" title="${esc(d.toLocaleString())}">${esc(text)}</time>`;
+        }
+
         const repoFilter = document.getElementById('repoFilter');
-        REPOS.forEach(r => repoFilter.add(new Option(r, r)));
-
+        const statusFilter = document.getElementById('statusFilter');
+        const countEl = document.getElementById('count');
+        const reportLink = document.getElementById('reportLink');
+        const tbody = document.querySelector('#issuesTable tbody');
         const params = new URLSearchParams(location.search);
-        if (params.get('repo')) repoFilter.value = params.get('repo');
 
-        async function load() {
-            const repo = repoFilter.value;
-            const qs = repo ? '?repo=' + encodeURIComponent(repo) : '';
-            const res = await fetch('/api/issues/public' + qs);
-            const rows = await res.json();
-            document.querySelector('#issuesTable tbody').innerHTML = rows.map(r => `
+        const repoLabels = {};
+        let allRows = [];
+        let requestId = 0;
+
+        // The repo list comes from the server so this page, the form and the API can't drift apart.
+        async function loadRepos() {
+            try {
+                const res = await fetch('/api/repos');
+                if (!res.ok) throw new Error();
+                const repos = await res.json();
+                for (const r of repos) {
+                    repoLabels[r.slug] = r.label;
+                    repoFilter.add(new Option(r.label, r.slug));
+                }
+            } catch {
+                // The filter stays on "All repos"; the issues themselves still load.
+            }
+            const pre = (params.get('repo') || '').toLowerCase();
+            if (pre) {
+                if (![...repoFilter.options].some(o => o.value === pre)) repoFilter.add(new Option(pre, pre));
+                repoFilter.value = pre;
+            }
+            const preStatus = params.get('status');
+            if (preStatus) statusFilter.value = preStatus;
+        }
+
+        function syncUrl() {
+            const p = new URLSearchParams();
+            if (repoFilter.value) p.set('repo', repoFilter.value);
+            if (statusFilter.value) p.set('status', statusFilter.value);
+            const qs = p.toString();
+            history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+            reportLink.href = '/report.html' + (repoFilter.value ? '?repo=' + encodeURIComponent(repoFilter.value) : '');
+        }
+
+        function showMessage(text, cls) {
+            tbody.innerHTML = `<tr><td colspan="6" class="${cls}">${esc(text)}</td></tr>`;
+        }
+
+        function render() {
+            const status = statusFilter.value;
+            const rows = status ? allRows.filter(r => r.status === status) : allRows;
+            countEl.textContent = `${rows.length} issue${rows.length === 1 ? '' : 's'}`;
+            if (!rows.length) { showMessage('No issues found.', 'empty'); return; }
+
+            tbody.innerHTML = rows.map(r => `
     <tr>
-      <td>#${r.id}</td>
-      <td>${esc(r.repo)}</td>
-      <td>${esc(r.title)}</td>
-      <td>${esc(r.severity)}</td>
-      <td><span class="badge status-${r.status}">${esc(r.status)}</span></td>
-      <td>${r.created_at}</td>
-      <td><a href="/issue.html?id=${r.id}">${esc(r.title)}</a></td>
+      <td class="num">#${esc(r.id)}</td>
+      <td>${esc(repoLabels[r.repo] || r.repo)}</td>
+      <td class="title"><a href="/issue.html?id=${encodeURIComponent(r.id)}">${esc(r.title)}</a></td>
+      <td><span class="tag sev-${esc(slug(r.severity))}">${esc(r.severity)}</span></td>
+      <td><span class="tag status-${esc(slug(r.status))}">${esc(String(r.status ?? '').replace(/_/g, ' '))}</span></td>
+      <td class="date">${fmtDate(r.created_at)}</td>
     </tr>`).join('');
         }
 
+        async function load() {
+            const mine = ++requestId;
+            const repo = repoFilter.value;
+            const qs = repo ? '?repo=' + encodeURIComponent(repo) : '';
+            syncUrl();
+            showMessage('Loading…', 'empty');
+            countEl.textContent = '';
+
+            let rows;
+            try {
+                const res = await fetch('/api/issues/public' + qs);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                rows = await res.json();
+                if (!Array.isArray(rows)) throw new Error('unexpected response');
+            } catch {
+                if (mine !== requestId) return;
+                showMessage('Could not load issues — reload the page to try again.', 'error');
+                return;
+            }
+            if (mine !== requestId) return; // a newer filter change superseded this request
+            allRows = rows;
+            render();
+        }
+
         repoFilter.addEventListener('change', load);
-        load();
+        statusFilter.addEventListener('change', () => { syncUrl(); render(); });
+
+        loadRepos().then(load);
     </script>
     <script src="script.js"></script>
 </body>

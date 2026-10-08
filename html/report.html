@@ -32,10 +32,12 @@
             background-color: var(--text-input);
             border: var(--border);
             box-sizing: border-box;
+            font: inherit;
         }
 
         textarea {
-            min-height: 120px;
+            min-height: 160px;
+            resize: vertical;
         }
 
         button {
@@ -44,18 +46,82 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         a {
             color: var(--link);
         }
 
-        #honeypot {
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 16px;
+        }
+
+        @media (max-width: 560px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.85em;
+            font-weight: normal;
+            opacity: 0.75;
+        }
+
+        .req {
+            font-weight: normal;
+            opacity: 0.75;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-weight: normal;
+        }
+
+        .check-row input {
+            width: auto;
+            margin-top: 3px;
+        }
+
+        .counter {
+            text-align: right;
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+
+        .honeypot {
             position: absolute;
             left: -9999px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
         }
 
         #status {
             margin-top: 12px;
             font-weight: 600;
+            min-height: 1.4em;
+        }
+
+        #status.error {
+            color: #c0392b;
+        }
+
+        #status.ok {
+            color: #2e8b57;
+        }
+
+        .footer-link {
+            margin-top: 24px;
         }
     </style>
 </head>
@@ -66,47 +132,86 @@
     </button>
     <h1>Report an Issue</h1>
     <form id="issueForm">
-        <label for="repo">Repository</label>
-        <select id="repo" name="repo" required>
-            <option value="">-- select --</option>
-        </select>
+        <div class="row">
+            <div>
+                <label for="repo">Repository <span class="req">(required)</span></label>
+                <select id="repo" name="repo" required>
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div>
+                <label for="severity">Severity</label>
+                <select id="severity" name="severity">
+                    <option value="low">Low</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+        </div>
 
-        <label for="title">Title</label>
-        <input type="text" id="title" name="title" required maxlength="200">
+        <label for="title">Title <span class="req">(required)</span></label>
+        <input type="text" id="title" name="title" required maxlength="200"
+            placeholder="Short summary of the problem" aria-describedby="titleCount">
+        <div class="counter" id="titleCount" aria-hidden="true">0 / 200</div>
 
-        <label for="body">Description</label>
-        <textarea id="body" name="body" required></textarea>
+        <label for="body">Description <span class="req">(required)</span></label>
+        <textarea id="body" name="body" required aria-describedby="bodyHint"
+            placeholder="What happened?&#10;&#10;Steps to reproduce:&#10;1. &#10;2. &#10;&#10;Expected behavior:&#10;&#10;Actual behavior:&#10;&#10;Version / environment:"></textarea>
+        <span class="hint" id="bodyHint">The more detail you give, the faster it can be fixed. Steps to reproduce help
+            the most.</span>
 
-        <label for="severity">Severity</label>
-        <select id="severity" name="severity">
-            <option value="low">Low</option>
-            <option value="normal" selected>Normal</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
-        </select>
+        <div class="row">
+            <div>
+                <label for="reporter_name">Your name (optional)</label>
+                <input type="text" id="reporter_name" name="reporter_name" autocomplete="name">
+            </div>
+            <div>
+                <label for="reporter_contact">Contact / email (optional)</label>
+                <input type="text" id="reporter_contact" name="reporter_contact" aria-describedby="contactHint">
+            </div>
+        </div>
+        <span class="hint" id="contactHint">Contact is only used to reply about this issue.</span>
 
-        <label for="reporter_name">Your name (optional)</label>
-        <input type="text" id="reporter_name" name="reporter_name">
-
-        <label for="reporter_contact">Contact / email (optional)</label>
-        <input type="text" id="reporter_contact" name="reporter_contact">
-
-        <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
-            <input type="checkbox" id="sensitive" name="sensitive" style="width:auto;">
-            This is a security-sensitive issue — keep it private until reviewed
+        <label class="check-row" for="sensitive">
+            <input type="checkbox" id="sensitive" name="sensitive">
+            <span>This is a security-sensitive issue — keep it private until reviewed</span>
         </label>
 
-        <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+        <div class="honeypot" aria-hidden="true">
+            <label for="honeypot">Leave this field empty</label>
+            <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+        </div>
 
         <button type="submit" id="submitBtn">Submit Report</button>
+        <div id="status" role="status" aria-live="polite"></div>
     </form>
-    <br>
-    Tracking an issue instead? go to <a href="/status.html">Status</a>
-    <div id="status" role="status"></div>
+
+    <p class="footer-link">Tracking an issue instead? Go to <a href="/status.html">Status</a></p>
 
     <script>
         const statusEl = document.getElementById('status');
         const repoEl = document.getElementById('repo');
+        const titleEl = document.getElementById('title');
+        const titleCountEl = document.getElementById('titleCount');
+        const contactEl = document.getElementById('reporter_contact');
+        const contactHintEl = document.getElementById('contactHint');
+        const sensitiveEl = document.getElementById('sensitive');
+
+        function setStatus(text, kind) {
+            statusEl.className = kind || '';
+            statusEl.textContent = text;
+        }
+
+        function setStatusWithLink(prefix, linkText, href, suffix) {
+            statusEl.className = 'ok';
+            statusEl.textContent = prefix;
+            const a = document.createElement('a');
+            a.href = href;
+            a.textContent = linkText;
+            statusEl.appendChild(a);
+            statusEl.appendChild(document.createTextNode(suffix));
+        }
 
         // The repo list comes from the server so the form and the API can't drift apart.
         (async () => {
@@ -123,9 +228,20 @@
                 const preRepo = new URLSearchParams(location.search).get('repo');
                 if (preRepo) repoEl.value = preRepo.toLowerCase();
             } catch {
-                statusEl.textContent = 'Could not load the repository list — reload the page.';
+                setStatus('Could not load the repository list — reload the page.', 'error');
             }
         })();
+
+        function updateTitleCount() {
+            titleCountEl.textContent = `${titleEl.value.length} / ${titleEl.maxLength}`;
+        }
+        titleEl.addEventListener('input', updateTitleCount);
+
+        sensitiveEl.addEventListener('change', () => {
+            contactHintEl.textContent = sensitiveEl.checked
+                ? 'Contact is only used to reply about this issue. For security reports, a way to reach you helps a lot.'
+                : 'Contact is only used to reply about this issue.';
+        });
 
         document.getElementById('issueForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -134,10 +250,10 @@
 
             const data = Object.fromEntries(new FormData(form).entries());
             data.visibility = form.sensitive.checked ? 'internal' : 'public';
-            delete data.sensitive; // checkbox state is already sent as `visibility`
+            delete data.sensitive;
 
             btn.disabled = true;
-            statusEl.textContent = 'Submitting…';
+            setStatus('Submitting…');
 
             let res;
             try {
@@ -147,7 +263,7 @@
                     body: JSON.stringify(data)
                 });
             } catch {
-                statusEl.textContent = 'Network error — try again.';
+                setStatus('Network error — your text is still here, try again.', 'error');
                 btn.disabled = false;
                 return;
             }
@@ -156,11 +272,21 @@
             const payload = await res.json().catch(() => null);
 
             if (res.ok && payload?.id !== undefined) {
-                statusEl.textContent = `Thanks — issue #${payload.id} submitted.`;
+                setStatusWithLink(
+                    `Thanks — issue #${payload.id} submitted. You can follow it on the `,
+                    'Status page',
+                    '/status.html',
+                    '.'
+                );
                 form.reset();
+                updateTitleCount();
+                sensitiveEl.dispatchEvent(new Event('change'));
+            } else if (res.status === 429) {
+                setStatus('Too many submissions — wait a bit and try again.', 'error');
             } else {
-                statusEl.textContent = `Error: ${payload?.error || `submission failed (HTTP ${res.status})`}`;
+                setStatus(`Error: ${payload?.error || `submission failed (HTTP ${res.status})`}`, 'error');
             }
+            statusEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             btn.disabled = false;
         });
     </script>
